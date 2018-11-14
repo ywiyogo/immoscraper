@@ -1,11 +1,11 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 # coding: utf-8
 
 # # Immoscout24.de Scraper
 # 
 # Ein Script zum dumpen (in `.csv` schreiben) von Immobilien, welche auf [immoscout24.de](http://immoscout24.de) angeboten werden
 
-# In[5]:
+# In[1]:
 
 
 from bs4 import BeautifulSoup
@@ -16,7 +16,7 @@ from random import choice
 import time
 
 
-# In[7]:
+# In[2]:
 
 
 # urlquery from Achim Tack. Thank you!
@@ -49,7 +49,7 @@ def urlquery(url):
         print('Something went wrong with Crawling:\n%s' % e)
 
 
-# In[9]:
+# In[3]:
 
 
 def immoscout24parser(url):
@@ -60,7 +60,7 @@ def immoscout24parser(url):
         soup = BeautifulSoup(urlquery(url), 'html.parser')
         scripts = soup.findAll('script')
         for script in scripts:
-            #print script.text.strip()
+            # print(script.text.strip())
             if 'IS24.resultList' in script.text.strip():
                 s = script.string.split('\n')
                 for line in s:
@@ -82,15 +82,15 @@ def immoscout24parser(url):
 # 
 # Geht Wohnungen und Häuser, jeweils zum Kauf und Miete durch und sammelt die Daten
 
-# In[31]:
+# In[ ]:
 
 
 immos = {}
 
-b = 'Sachsen' # Bundesland
-s = 'Dresden' # Stadt
-k = 'Haus' # Wohnung oder Haus
-w = 'Kauf' # Miete oder Kauf
+b = 'Baden-Wuerttemberg' # Bundesland
+s = 'Karlsruhe' # Stadt
+k = 'Wohnung' # Wohnung oder Haus
+w = 'Miete' # Miete oder Kauf
 
 page = 0
 print('Suche %s / %s' % (k, w))
@@ -105,6 +105,7 @@ while True:
     while resultlist_json is None:
         try:
             resultlist_json = immoscout24parser(url)
+            # print(resultlist_json)
             numberOfPages = int(resultlist_json[u'paging'][u'numberOfPages'])
             pageNumber = int(resultlist_json[u'paging'][u'pageNumber'])
         except:
@@ -118,50 +119,48 @@ while True:
         realEstate_json = resultlistEntry[u'resultlist.realEstate']
         
         realEstate = {}
-
-        realEstate[u'Miete/Kauf'] = w
-        realEstate[u'Haus/Wohnung'] = k
-
-        realEstate['address'] = realEstate_json['address']['description']['text']
-        realEstate['city'] = realEstate_json['address']['city']
-        realEstate['postcode'] = realEstate_json['address']['postcode']
-        realEstate['quarter'] = realEstate_json['address']['quarter']
-        try:
-            realEstate['lat'] = realEstate_json['address'][u'wgs84Coordinate']['latitude']
-            realEstate['lon'] = realEstate_json['address'][u'wgs84Coordinate']['longitude']
-        except:
-            realEstate['lat'] = None
-            realEstate['lon'] = None
-            
-        realEstate['title'] = realEstate_json['title']
-
-        realEstate['numberOfRooms'] = realEstate_json['numberOfRooms']
-        realEstate['livingSpace'] = realEstate_json['livingSpace']
+        realEstate['PubDate'] = resultlistEntry[u'@publishDate'][0:16]
         
         if k=='Wohnung':
-            realEstate['balcony'] = realEstate_json['balcony']
-            realEstate['builtInKitchen'] = realEstate_json['builtInKitchen']
-            realEstate['garden'] = realEstate_json['garden']
-            realEstate['price'] = realEstate_json['price']['value']
-            realEstate['privateOffer'] = realEstate_json['privateOffer']
+            realEstate['Balcony'] = realEstate_json['balcony']
+            realEstate['Kitchen'] = realEstate_json['builtInKitchen']
+            # realEstate['garden'] = realEstate_json['garden']
+            realEstate['Price'] = realEstate_json['price']['value']
+            # realEstate['privateOffer'] = realEstate_json['privateOffer']
         elif k=='Haus':
             realEstate['isBarrierFree'] = realEstate_json['isBarrierFree']
-            realEstate['cellar'] = realEstate_json['cellar']
-            realEstate['plotArea'] = realEstate_json['plotArea']
-            realEstate['price'] = realEstate_json['price']['value']
-            realEstate['privateOffer'] = realEstate_json['privateOffer']
-        
-        realEstate['floorplan'] = realEstate_json['floorplan']
-        realEstate['from'] = realEstate_json['companyWideCustomerId']
-        realEstate['ID'] = realEstate_json[u'@id']
-        realEstate['url'] = u'https://www.immobilienscout24.de/expose/%s' % realEstate['ID']
+            realEstate['Cellar'] = realEstate_json['cellar']
+            realEstate['PlotArea'] = realEstate_json['plotArea']
+            realEstate['Price'] = realEstate_json['price']['value']
+            realEstate['PrivateOffer'] = realEstate_json['privateOffer']
+            
+        realEstate['Address'] = realEstate_json['address']['description']['text']
+        #realEstate['city'] = realEstate_json['address']['city']
+        #realEstate['postcode'] = realEstate_json['address']['postcode']
+        realEstate['Quarter'] = realEstate_json['address']['quarter']
+        #try:
+        #    realEstate['lat'] = realEstate_json['address'][u'wgs84Coordinate']['latitude']
+        #    realEstate['lon'] = realEstate_json['address'][u'wgs84Coordinate']['longitude']
+        #except:
+        #    realEstate['lat'] = None
+        #    realEstate['lon'] = None
+            
+        realEstate['Title'] = realEstate_json['title']
 
-        immos[realEstate['ID']] = realEstate
+        realEstate['Rooms'] = realEstate_json['numberOfRooms']
+        realEstate['Space'] = realEstate_json['livingSpace']
+        
+        # realEstate['floorplan'] = realEstate_json['floorplan']
+        realEstate['ID'] = realEstate_json[u'@id']
+        
+        realEstate['url'] = u'=HYPERLINK("https://www.immobilienscout24.de/expose/%s")' % realEstate['ID']
+
+        immos[realEstate['PubDate']] = realEstate
 
     print('Scrape Page %i/%i (%i Immobilien %s %s gefunden)' % (page, numberOfPages, len(immos), k, w))
 
 
-# In[32]:
+# In[ ]:
 
 
 print("Scraped %i Immos" % len(immos))
@@ -171,33 +170,33 @@ print("Scraped %i Immos" % len(immos))
 # 
 # Die gesammelten Daten werden in ein sauberes Datenformat konvertiert, welches z.B. auch mit Excel gelesen werden kann. Weiterhin werden die Ergebnisse pseudonymisiert, d.h. die Anbieter bekommen eindeutige Nummern statt Klarnamen.
 
-# In[33]:
+# In[ ]:
 
 
 from datetime import datetime
 timestamp = datetime.strftime(datetime.now(), '%Y-%m-%d-%H-%M')
 
 
-# In[34]:
+# In[ ]:
 
 
 import pandas as pd
 
 
-# In[35]:
+# In[ ]:
 
 
 df = pd.DataFrame(immos).T
-df.index.name = 'ID'
+df.index.name = 'PublishDate'
 
 
-# In[36]:
+# In[ ]:
 
 
 len(df)
 
 
-# In[37]:
+# In[ ]:
 
 
 df.head()
@@ -205,19 +204,25 @@ df.head()
 
 # ## Alles Dumpen
 
-# In[38]:
+# In[ ]:
 
 
 f = open('%s-%s-%s.csv' % (timestamp, k, w), 'w')
 f.write('# %s %s from immoscout24.de on %s\n' % (k,w,timestamp))
-df[(df['Haus/Wohnung']==k) & (df['Miete/Kauf']==w)].to_csv(f, encoding='utf-8')
+df.to_csv(f, encoding='utf-8', index=False)
 f.close()
 
 
-# In[39]:
+# In[ ]:
 
 
 df.to_excel('%s-%s-%s.xlsx' % (timestamp, k, w))
 
 
 # Fragen? [@Balzer82](https://twitter.com/Balzer82)
+
+# In[ ]:
+
+
+
+
